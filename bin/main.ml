@@ -17,9 +17,19 @@ let output_layer_activations (hidden: Mat.mat) (weights2: Mat.mat) (beta: float)
   let outputs' = Mat.map (fun x -> activation_func x beta) outputs in
   outputs'
 
+let confmat (outputs: Mat.mat) (targets: Mat.mat) =
+  let predicted = Mat.map (fun x -> if x > 0.5 then 1. else 0.) outputs in
+  let ncols_targets = Mat.col_num targets in
+  let nclasses = if ncols_targets = 1 then 2 else ncols_targets in
+  
+  
+
+  Mat.print predicted;
+  Mat.print targets
+ 
 let train (inputs: Mat.mat) (targets: Mat.mat) (eta: float) (niterations: int) (nhidden: int) =  
   let nIn = Mat.col_num inputs in
-  let nOut = Mat.row_num targets in
+  let nOut = Mat.col_num targets in
   let inputs' = append_bias_col inputs in
   
   (*initialize weight matrices to small random values*)
@@ -27,12 +37,13 @@ let train (inputs: Mat.mat) (targets: Mat.mat) (eta: float) (niterations: int) (
   let weights2 = Mat.map (( *. ) (2. /. sqrt((float) nIn))) (Mat.map ((-.) 0.5) (Mat.uniform (nhidden+1) nOut)) in
   
   let rec loop n w1 w2 = 
-    if n <= 0 then ()
+    let hidden = hidden_layers_activations inputs' w1 1. in
+    let outputs = output_layer_activations hidden w2 1. in
+    if n <= 0 then
+      (*generate and display confusion matrix*)
+      confmat outputs targets
     else
       (*forwards fase*)
-      let hidden = hidden_layers_activations inputs' w1 1. in
-      let outputs = output_layer_activations hidden w2 1. in
-
       let square x = x *. x in
       let error =  0.5 *. Mat.(sum' (map square (outputs - targets))) in
       Printf.printf "Iteration :%d Error: %0.10f\n" (niterations - n) error;
@@ -52,10 +63,10 @@ let train (inputs: Mat.mat) (targets: Mat.mat) (eta: float) (niterations: int) (
      
       loop (n-1) updatew1 updatew2
   in
-
   loop niterations weights1 weights2;
   Printf.printf ""
 
+ 
 let () =
   (* AND data*)
   let anddata_arr = [|
