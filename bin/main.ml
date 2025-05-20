@@ -32,8 +32,6 @@ let train (inputs: Mat.mat) (targets: Mat.mat) (eta: float) (niterations: int) (
       (*forwards fase*)
       let hidden = hidden_layers_activations inputs' w1 1. in
       let outputs = output_layer_activations hidden w2 1. in
-      Mat.print hidden;
-      Mat.print outputs;
 
       let square x = x *. x in
       let error =  0.5 *. Mat.(sum' (map square (outputs - targets))) in
@@ -42,18 +40,16 @@ let train (inputs: Mat.mat) (targets: Mat.mat) (eta: float) (niterations: int) (
       (*backwards fase*)
       
       (*compute error at the output*)
-      let deltao = Mat.((outputs - targets) *@ outputs *@ (ones (row_num outputs) (col_num outputs) - outputs)) in
-      Mat.print deltao;
+      let deltao = Mat.((outputs - targets) * outputs * (ones (row_num outputs) (col_num outputs) - outputs)) in
       (*update output layer weights*)
-      let updatew2 = Mat.(weights2 - (map (fun x -> x *. eta) ((transpose hidden) *@ deltao))) in
-      Mat.print updatew2;
+      let updatew2 = Mat.(w2 - (map (fun x -> x *. eta) ((transpose hidden) *@ deltao))) in
       (* compute error at the hidden layers *)
-      let deltah = Mat.(hidden *@ (ones (row_num hidden) (col_num hidden) - hidden) *@ (deltao *@ (transpose weights2))) in
-      Mat.print deltah;
+      let deltah = Mat.(hidden * (ones (row_num hidden) (col_num hidden) - hidden) * (deltao *@ (transpose w2))) in
       (*update hidden layer weights*)
       let deltah_sliced = Mat.get_slice [[]; [0; (Mat.col_num deltah) - 2]] deltah in (*select every column except the last one from deltah*)
-      let updatew1 = Mat.(weights1 - (map (fun x -> x *. eta) ((transpose inputs') *@ deltah_sliced ))) in
+      let updatew1 = Mat.(w1 - (map (fun x -> x *. eta) ((transpose inputs') *@ deltah_sliced ))) in
       
+     
       loop (n-1) updatew1 updatew2
   in
 
