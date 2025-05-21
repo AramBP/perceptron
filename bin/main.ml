@@ -1,6 +1,5 @@
 open Owl
 
-
 let activation_func h beta = 1. /. (1. +. exp(-1. *. beta *. h))
 let append_bias_col a: Mat.mat = 
   let n_rows = Mat.row_num a in
@@ -16,6 +15,24 @@ let output_layer_activations (hidden: Mat.mat) (weights2: Mat.mat) (beta: float)
   let outputs = Mat.(hidden *@ weights2) in
   let outputs' = Mat.map (fun x -> activation_func x beta) outputs in
   outputs'
+
+  
+let argmax_rows (a: Mat.mat)  = 
+  let nrows = Mat.row_num a in
+  let ncols = Mat.col_num a in
+  let output = Array.make nrows 0 in
+
+  for i = 0 to nrows - 1 do
+    let max = ref (Mat.get a i 0) in
+    output.(i) <- 0;
+    for j = 0 to ncols -1 do
+      let elem = ref (Mat.get a i j) in
+      if !elem > !max then 
+        max := !elem;
+        output.(i) <- j;
+    done;
+  done;
+  output
 
 let confmat (outputs: Mat.mat) (targets: Mat.mat) =
   let predicted = Mat.map (fun x -> if x > 0.5 then 1. else 0.) outputs in
