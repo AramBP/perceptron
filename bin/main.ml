@@ -16,33 +16,49 @@ let output_layer_activations (hidden: Mat.mat) (weights2: Mat.mat) (beta: float)
   let outputs' = Mat.map (fun x -> activation_func x beta) outputs in
   outputs'
 
-  
+
 let argmax_rows (a: Mat.mat)  = 
   let nrows = Mat.row_num a in
   let ncols = Mat.col_num a in
-  let output = Array.make nrows 0 in
+  let output = Array.make nrows 0. in
 
   for i = 0 to nrows - 1 do
     let max = ref (Mat.get a i 0) in
-    output.(i) <- 0;
+    output.(i) <- 0.;
     for j = 0 to ncols -1 do
       let elem = ref (Mat.get a i j) in
       if !elem > !max then 
         max := !elem;
-        output.(i) <- j;
+        output.(i) <- (float) j;
     done;
   done;
   output
 
 let confmat (outputs: Mat.mat) (targets: Mat.mat) =
-  let predicted = Mat.map (fun x -> if x > 0.5 then 1. else 0.) outputs in
+  
+  let compute_confmat predicted targets' nclasses = 
+    let cm = Mat.zeros nclasses nclasses in
+    for i = 0 to nclasses-1 do
+      for j = 0 to nclasses-1 do
+        let predicted_where = Mat.map (fun x -> if x = (float) i then 1. else 0.) predicted in
+        let targets_where = Mat.map (fun x -> if x = (float) j then 1. else 0.) targets' in
+        cm.Mat.%{i;j} <- Mat.(sum' ( predicted_where * targets_where));
+      done;
+    done;
+    cm
+  in
   let ncols_targets = Mat.col_num targets in
-  let nclasses = if ncols_targets = 1 then 2 else ncols_targets in
-  
-  
 
-  Mat.print predicted;
-  Mat.print targets
+  if ncols_targets = 1 then 
+    let nclasses = 2 in
+    let predicted = Mat.map (fun x -> if x > 0.5 then 1. else 0.) outputs in
+    compute_confmat predicted targets nclasses
+  else 
+    (*One of N encoding*)
+    let nclasses = ncols_targets in
+    let predicted = Mat.of_array (argmax_rows outputs) 1 nclasses in
+    let targets' = Mat.of_array (argmax_rows targets) 1 nclasses in
+    compute_confmat predicted targets' nclasses
  
 let train (inputs: Mat.mat) (targets: Mat.mat) (eta: float) (niterations: int) (nhidden: int) =  
   let nIn = Mat.col_num inputs in
@@ -56,10 +72,15 @@ let train (inputs: Mat.mat) (targets: Mat.mat) (eta: float) (niterations: int) (
   let rec loop n w1 w2 = 
     let hidden = hidden_layers_activations inputs' w1 1. in
     let outputs = output_layer_activations hidden w2 1. in
-    if n <= 0 then
+    if n <= 0 then begin
       (*generate and display confusion matrix*)
-      confmat outputs targets
-    else
+      let cm = confmat outputs targets in
+      let percentage_correct = ((Mat.trace cm) /. (Mat.sum' cm)) *. 100. in
+      Printf.printf "\nPercentage correct: %0.2f percent\nConfusion matrix:" percentage_correct;
+      Mat.print cm
+
+    end
+    else begin
       (*forwards fase*)
       let square x = x *. x in
       let error =  0.5 *. Mat.(sum' (map square (outputs - targets))) in
@@ -79,6 +100,7 @@ let train (inputs: Mat.mat) (targets: Mat.mat) (eta: float) (niterations: int) (
       
      
       loop (n-1) updatew1 updatew2
+    end
   in
   loop niterations weights1 weights2;
   Printf.printf ""
@@ -96,5 +118,6 @@ let () =
   let anddata = Mat.of_arrays anddata_arr in
   let and_input = Owl.Mat.cols anddata [|0;1|] in
   let and_targets = Owl.Mat.col anddata 2 in
-  let nhidden = 2 in  
-  train and_input and_targets 0.25 1001 nhidden
+  let nhidden_and = 2 in  
+  
+  train and_input and_targets 0.25 1001 nhidden_and
