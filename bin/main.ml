@@ -127,8 +127,6 @@ module Make (C: PerceptronConstants): Perceptron = struct
       end
     in
     loop C.niterations weights1 weights2;
-    Printf.printf ""
-
 end
 
 module MyPerceptron = Make (struct 
