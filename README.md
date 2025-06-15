@@ -5,3 +5,4 @@ todo:
 - 1-to-N encoding
 - add lineair regression example
 - add classification example
+- write pdf for math behind the program
